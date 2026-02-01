@@ -1,0 +1,9 @@
+PUT http://localhost:3003/api/blogs/697f0de030a057c6ac016c12
+Content-Type: application/json
+
+{
+    "title": "Ankara myrsky",
+    "author": "Pekka Poutiniemi",
+    "url": "yle.fi",
+    "likes": 666
+}
