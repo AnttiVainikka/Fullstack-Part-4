@@ -116,6 +116,23 @@ describe('POST request to /api/blogs', async () => {
         const response = await api.get("/api/blogs")
         assert.strictEqual(response.body.length, blogs.length)
     })
+
+    test ("POSTing blog without token returns 401 Unauthorized and no blog is added", async () => {
+
+        const newBlog = {
+            title: "No token sad",
+            author: "POSTER",
+            url: "jospa",
+            likes: 44
+        }
+        await api
+            .post("/api/blogs")
+            .send(newBlog)
+            .expect(401)
+        
+        const response = await api.get("/api/blogs")
+        assert.strictEqual(response.body.length, blogs.length)
+    })
 })
 
 describe('DELETE request to /api/blogs/id', () => {
