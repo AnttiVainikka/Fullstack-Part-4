@@ -1,10 +1,11 @@
 POST http://localhost:3003/api/blogs
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkJvcm9taXIgdGhlIEJsb2dnZXIiLCJpZCI6IjY5N2Y0OWM1MGQ1OTUxOTlkODZmMmVjZiIsImlhdCI6MTc3MDAzMDc1OX0.aMy0a1HOyMi_2qUgXZZVvyf6Qeu6xVXOpwioDLw7k3k
 
 {
-    "title": "Ankara myrsky",
+    "title": "Pakkanen iski",
     "author": "Pekka Poutaniemi",
-    "url": "yle.fi",
-    "likes": 36,
+    "url": "iltasanomat.com",
+    "likes": 124,
     "userId": "697f49c50d595199d86f2ecf"
 }

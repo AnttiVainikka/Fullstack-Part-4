@@ -5,12 +5,22 @@ const supertest = require('supertest')
 const app = require('../app')
 const blogs = require("./testBlogs")
 const Blog = require('../models/blog')
+const User = require('../models/user')
+const bcrypt = require('bcryptjs')
 
 const api = supertest(app)
+
 
 beforeEach(async () => {
     await Blog.deleteMany({})
     await Blog.insertMany(blogs)
+    await User.deleteMany({})
+    let passwordHash = await bcrypt.hash('sekret', 10)
+    let user = new User({ username: 'root', name: "Rolan", passwordHash })
+    await user.save()
+    passwordHash = await bcrypt.hash('salasana', 10)
+    user = new User({ username: 'Boromir the Blogger', name: "Boromir", passwordHash })
+    await user.save()
 })
 
 describe('GET request to /api/blogs', () => {
@@ -33,7 +43,7 @@ describe('GET request to /api/blogs', () => {
     })
 })
 
-describe('POST request to /api/blogs', () => {
+describe('POST request to /api/blogs', async () => {
 
     test("POSTing blog increases blog count by one and new blog can be found", async () => {
         const newBlog = {
@@ -42,9 +52,11 @@ describe('POST request to /api/blogs', () => {
             url: "jospa",
             likes: 44
         }
-
+        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
+        const bearer = "Bearer " + authorization.body.token
         await api
             .post("/api/blogs")
+            .set('authorization', bearer)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -61,7 +73,9 @@ describe('POST request to /api/blogs', () => {
             author: "Eppu Epäsuosittu",
             url: "lonely"
         }
-        await api.post("/api/blogs").send(likelessBlog)
+        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
+        const bearer = "Bearer " + authorization.body.token
+        await api.post("/api/blogs").set('authorization', bearer).send(likelessBlog)
         const response = await api.get("/api/blogs")
         const addedBlog = response.body.filter((blog) => blog.author == "Eppu Epäsuosittu")[0]
         assert.strictEqual(addedBlog.likes, 0)
@@ -79,14 +93,17 @@ describe('POST request to /api/blogs', () => {
             author: "POSTER",
             likes: 44
         }
-        
+        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
+        const bearer = "Bearer " + authorization.body.token
         await api
             .post("/api/blogs")
+            .set('authorization', bearer)
             .send(titlelessBlog)
             .expect(400)
         
         await api
             .post("/api/blogs")
+            .set('authorization', bearer)
             .send(urlessBlog)
             .expect(400)
         
@@ -152,6 +169,118 @@ describe('PUT request to /api/blogs/id', () => {
             .expect(404)
     })
 })
+
+describe('POST request to /api/users', () => {
+
+  test('creation succeeds with a fresh username', async () => {
+    const usersAtStart = await api.get("/api/users")
+
+    const newUser = {
+      username: 'anttvain',
+      name: 'Antti Vainikka',
+      password: 'salainen',
+    }
+
+    await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+
+    const usersAtEnd = await api.get("/api/users")
+    assert.strictEqual(usersAtEnd.body.length, usersAtStart.body.length + 1)
+
+    const usernames = usersAtEnd.body.map(u => u.username)
+    assert(usernames.includes(newUser.username))
+  })
+
+  test('creation fails if username is already taken', async () => {
+    const usersAtStart = await api.get("/api/users")
+
+    const newUser = {
+      username: 'root',
+      name: 'Superuser',
+      password: 'salainen',
+    }
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+
+    const usersAtEnd = await api.get("/api/users")
+    assert(result.body.error.includes('expected `username` to be unique'))
+
+    assert.strictEqual(usersAtEnd.body.length, usersAtStart.body.length)
+  })
+
+  test('creation fails if username or password is too short', async () => {
+    const usersAtStart = await api.get("/api/users")
+
+    const shortUsername = {
+      username: 'ro',
+      name: 'Superuser',
+      password: 'salainen',
+    }
+
+    const shortPassword = {
+      username: 'robert',
+      name: 'Superuser',
+      password: 'sa',
+    }
+
+    let result = await api
+      .post('/api/users')
+      .send(shortUsername)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+    assert(result.body.error.includes('Username and password must be 3 characters or longer'))
+
+    result = await api
+      .post('/api/users')
+      .send(shortPassword)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+    assert(result.body.error.includes('Username and password must be 3 characters or longer'))
+
+    const usersAtEnd = await api.get("/api/users")
+
+    assert.strictEqual(usersAtEnd.body.length, usersAtStart.body.length)
+  })
+  test('creation fails if username or password is not provided', async () => {
+    const usersAtStart = await api.get("/api/users")
+
+    const noUsername = {
+      name: 'Superuser',
+      password: 'salainen'
+    }
+
+    const noPassword = {
+      username: 'robert',
+      name: 'Superuser'
+    }
+
+    let result = await api
+      .post('/api/users')
+      .send(noUsername)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+    assert(result.body.error.includes('Username or password missing'))
+
+    result = await api
+      .post('/api/users')
+      .send(noPassword)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+    assert(result.body.error.includes('Username or password missing'))
+
+    const usersAtEnd = await api.get("/api/users")
+
+    assert.strictEqual(usersAtEnd.body.length, usersAtStart.body.length)
+  })
+})
+
 
 after(async () => {
   await mongoose.connection.close()
