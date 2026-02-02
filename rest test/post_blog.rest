@@ -2,8 +2,9 @@ POST http://localhost:3003/api/blogs
 Content-Type: application/json
 
 {
-    "title": "Yö ulkona",
-    "author": "Jukka",
-    "url": "twitter.com",
-    "likes": 67
+    "title": "Ankara myrsky",
+    "author": "Pekka Poutaniemi",
+    "url": "yle.fi",
+    "likes": 36,
+    "userId": "697f49c50d595199d86f2ecf"
 }

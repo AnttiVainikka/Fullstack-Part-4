@@ -108,10 +108,10 @@ describe('DELETE request to /api/blogs/id', () => {
         assert(!titles.includes("React patterns"))
     })
 
-    test("DELETE request with invalid id doesn't crash system and returns 204", async () => {
+    test("DELETE request with invalid id doesn't crash system and returns 400", async () => {
         await api
             .delete(`/api/blogs/asdfasdfsd`)
-            .expect(204)
+            .expect(400)
     })
 })
 
@@ -141,11 +141,11 @@ describe('PUT request to /api/blogs/id', () => {
         assert.deepStrictEqual(67,result.likes)
     })
 
-    test("PUT request with invalid or missing id doesn't crash system and returns 404", async () => {
+    test("PUT request with missing id returns 404 and invalid id returns 400", async () => {
         await api
             .put(`/api/blogs/asdfasdfsd`)
             .send({likes: 67})
-            .expect(404)
+            .expect(400)
         await api
             .put(`/api/blogs/5a422a851b54a676534d17f7`)
             .send({likes: 67})
