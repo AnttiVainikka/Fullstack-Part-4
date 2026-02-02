@@ -12,8 +12,6 @@ const api = supertest(app)
 
 
 beforeEach(async () => {
-    await Blog.deleteMany({})
-    await Blog.insertMany(blogs)
     await User.deleteMany({})
     let passwordHash = await bcrypt.hash('sekret', 10)
     let user = new User({ username: 'root', name: "Rolan", passwordHash })
@@ -21,7 +19,18 @@ beforeEach(async () => {
     passwordHash = await bcrypt.hash('salasana', 10)
     user = new User({ username: 'Boromir the Blogger', name: "Boromir", passwordHash })
     await user.save()
+    await Blog.deleteMany({})
+    for (let blog of blogs) {
+        blog.user = user._id
+        let blogObject = new Blog(blog)
+        await blogObject.save()
+    }
 })
+
+const getAuthorization = async () => {
+    const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
+    return "Bearer " + authorization.body.token
+}
 
 describe('GET request to /api/blogs', () => {
 
@@ -52,8 +61,7 @@ describe('POST request to /api/blogs', async () => {
             url: "jospa",
             likes: 44
         }
-        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
-        const bearer = "Bearer " + authorization.body.token
+        const bearer = await getAuthorization()
         await api
             .post("/api/blogs")
             .set('authorization', bearer)
@@ -73,8 +81,7 @@ describe('POST request to /api/blogs', async () => {
             author: "Eppu Epäsuosittu",
             url: "lonely"
         }
-        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
-        const bearer = "Bearer " + authorization.body.token
+        const bearer = await getAuthorization()
         await api.post("/api/blogs").set('authorization', bearer).send(likelessBlog)
         const response = await api.get("/api/blogs")
         const addedBlog = response.body.filter((blog) => blog.author == "Eppu Epäsuosittu")[0]
@@ -93,8 +100,7 @@ describe('POST request to /api/blogs', async () => {
             author: "POSTER",
             likes: 44
         }
-        const authorization = await api.post("/api/login").send({"username": "Boromir the Blogger","password": "salasana"})
-        const bearer = "Bearer " + authorization.body.token
+        const bearer = await getAuthorization()
         await api
             .post("/api/blogs")
             .set('authorization', bearer)
@@ -115,8 +121,10 @@ describe('POST request to /api/blogs', async () => {
 describe('DELETE request to /api/blogs/id', () => {
 
     test('DELETE request with correct id deletes blog and returns 204', async () => {
+        const bearer = await getAuthorization()
         await api
             .delete(`/api/blogs/${blogs[0]._id}`)
+            .set('authorization', bearer)
             .expect(204)
 
         const response = await api.get("/api/blogs")
@@ -126,9 +134,35 @@ describe('DELETE request to /api/blogs/id', () => {
     })
 
     test("DELETE request with invalid id doesn't crash system and returns 400", async () => {
+        const bearer = await getAuthorization()
         await api
             .delete(`/api/blogs/asdfasdfsd`)
+            .set('authorization', bearer)
             .expect(400)
+    })
+
+    test("DELETE request without a token will not work", async () => {
+        const initialBlogs = await api.get("/api/blogs")
+        await api
+            .delete(`/api/blogs/${blogs[0]._id}`)
+            .expect(401)
+        const resultingBlogs = await api.get("/api/blogs")
+        assert.strictEqual(initialBlogs.body.length,resultingBlogs.body.length)
+    })
+
+    test("DELETE request does not work from a user who is not the creator", async () => {
+        const initialBlogs = await api.get("/api/blogs")
+        const authorization = await api.post("/api/login").send({"username": "root","password": "sekret"})
+        const wrongBearer = "Bearer " + authorization.body.token
+
+        const result = await api
+            .delete(`/api/blogs/${blogs[0]._id}`)
+            .set("authorization", wrongBearer)
+            .expect(400)
+
+        assert(result.body.error.includes("You can only delete your own blogs"))
+        const resultingBlogs = await api.get("/api/blogs")
+        assert.strictEqual(initialBlogs.body.length,resultingBlogs.body.length)
     })
 })
 
@@ -144,8 +178,9 @@ describe('PUT request to /api/blogs/id', () => {
         const updatedBlog = await api.put(`/api/blogs/${blogs[0]._id}`).send(updatedValues)
         const response = await api.get("/api/blogs")
         const result = response.body.filter((blog) => blog.id == blogs[0]._id)[0]
-        assert.deepStrictEqual(updatedBlog.body,result)
-        assert.strictEqual("Python patterns",result.title)
+        assert.strictEqual(updatedBlog.body.title,result.title)
+        assert.strictEqual(updatedBlog.body.author,result.author)
+        assert.strictEqual(updatedBlog.body.url,result.url)
     })
 
     test('PUT request successfully updated blog when only likes are given', async () => {

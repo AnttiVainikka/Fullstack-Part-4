@@ -2,7 +2,5 @@ PUT http://localhost:3003/api/users/697f49c50d595199d86f2ecf
 Content-Type: application/json
 
 {
-    "username": "Boromir the Blogger",
-    "name": "Boromir",
-    "blogs": []
+    "name": "Boromir"
 }
