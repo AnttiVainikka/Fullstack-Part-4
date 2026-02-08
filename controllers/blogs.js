@@ -33,7 +33,7 @@ blogsRouter.post('/', userExtractor, async (request, response) => {
         likes: body.likes,
         user: user._id
     })
-
+    
     if (!blog.likes) {
             blog.likes = 0
         }
